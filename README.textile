@@ -1,0 +1,23 @@
+h1. Arduino Tetris
+h2. Hardware
+* Arduino
+* 128 x 96 LCD from Sparkfun: http://www.sparkfun.com/commerce/product_info.php?products_id=8844
+* Four standard push buttons
+h2. Method
+A 10 x 20 matrix represents the current game 'grid', which consists of all static blocks and spaces.
+A static block is represented by a number 1 to 7, which in turn represents a colour.
+Empty spaces are represented as 0s.
+The current piece is represented as a 4 x 4 matrix, again with numbers representing colours.
+The setup function initialises the Arduino hardware and the LCD, then prepares the LCD to receive data.
+The loop function then checks for input, applies gravity, checks for completed lines, then draws the
+current grid. To draw the grid, every pixel is iterated over, and if the grid square that pixel is on
+happens to have a colour, one is drawn. If that pixel is in the piece, and the piece has a colour at that
+position, that colour is drawn instead.
+h2. Todo
+There's no collision detection yet, so pieces can be moved a bit too far to the right, and they don't
+always lie on the floor at the end. They also don't actually collide with each other. Some collision
+detection needs to happen so pieces get moved to the edge of the grid correctly and lock into place
+when they touch another block. After that some performance enhancements would be great.
+A good idea would be to have all four buttons trigger one of two interrupts, with the other button
+identifying which interrupt was triggered, making reaction time much better. Perhaps we could improve
+on the redraw time too - constantly redraw, but only trigger gravity every couple hundred msec?
