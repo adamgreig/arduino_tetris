@@ -67,27 +67,33 @@ void write_reg( unsigned short index, unsigned short data ) {
 #define COLLIDE_TOP     5
 char check_collision() {
     unsigned short int a, b;
-    for(a=0; a<10; a++) {
-        if( grid[a][19] ) {
-            return 5;
-        }
-    }
     for(a=0; a<4; a++) {
         for(b=0; b<4; b++) {
             if( !piece[a][b] ) {
                 continue;
             } else if( grid[piece_position[0] + a][piece_position[1] + b] ) {
-                return 1;
+                return COLLIDE_BLOCK;
             } else if( piece_position[1] + b == 0) {
-                return 2;
+                return COLLIDE_FLOOR;
             } else if( piece_position[0] + a == 0) {
-                return 3;
+                return COLLIDE_LEFT;
             } else if( piece_position[0] + a == 9) {
-                return 4;
+                return COLLIDE_RIGHT;
             }
         }
     }
-    return 0;
+    return COLLIDE_NONE;
+}
+
+//Check for a game-ending collision
+char check_collision_top() {
+    unsigned short int a;
+    for(a=0; a<10; a++) {
+        if( grid[a][19] ) {
+            return COLLIDE_TOP;
+        }
+    }
+    return COLLIDE_NONE;
 }
 
 //Copy a piece into the grid
@@ -156,14 +162,14 @@ void check_completed_lines() {
 //ISR to move the piece right TODO actual collision detection rather than the 4x4
 void move_right() {
     detachInterrupt(0);
-    if(piece_position[0] != 9 && check_collision() != 4)
+    if(piece_position[0] != 9 && check_collision() != COLLIDE_RIGHT)
         piece_position[0]++;
 }
 
 //ISR to move the piece left TODO actual collision detection rather than the 4x4
 void move_left() {
     detachInterrupt(1);
-    if(piece_position[0] != 0 && check_collision() != 3)
+    if(piece_position[0] != 0 && check_collision() != COLLIDE_LEFT)
         piece_position[0]--;
 }
 
@@ -292,31 +298,30 @@ void loop() {
     if(digitalRead(5) == LOW) {
         if(piece_position[1] > 2)
             piece_position[1] -= 2;
+        collision = check_collision();
+        if( collision == COLLIDE_BLOCK || collision == COLLIDE_FLOOR )
+            piece_position[1] += 2;
     }
 
     //Gravity
     if( millis() - milliseconds > 300 ) {
         piece_position[1]--;
         collision = check_collision();
-        if(collision == 1) {
-            //Move it back up
-            piece_position[1]++;
-            //Copy piece to grid
-            blit_piece_to_grid();
-            //Check for completed lines
-            check_completed_lines();
-            //We now need a new piece
-            piece_in_play = 0;
-        } else if(collision == 2) {
-            //Copy piece to grid
-            blit_piece_to_grid();
-            //Check for completed lines
-            check_completed_lines();
-            //We now need a new piece
-            piece_in_play = 0;
-        } else if(collision == 5) {
-            //oh shit we just lost the game
-            memset(grid, 1, 200);
+        switch(collision) {
+            case COLLIDE_BLOCK:
+                piece_position[1]++;    //Move it back up
+                blit_piece_to_grid();   //Blit it to the grid
+                collision = check_collision_top();
+                if( collision == COLLIDE_TOP )  //ohshit we lost the game
+                    memset(grid, 1, 200);
+                check_completed_lines();
+                piece_in_play = false;
+                break;
+            case COLLIDE_FLOOR:
+                blit_piece_to_grid();
+                check_completed_lines();
+                piece_in_play = false;
+                break;
         }
         milliseconds = millis();
     }
@@ -324,7 +329,7 @@ void loop() {
     //Make a new piece if needed
     if(!piece_in_play) {
         //Copy a random piece into the piece matrix
-        char random_piece = rand() % 7;
+        char random_piece = (rand() % 14) / 2;
         switch(random_piece) {
             case 0:
                 memcpy(piece, pieceI, 16);
@@ -379,7 +384,6 @@ void loop() {
                     } else {
                         send_colour(grid[a][b]);
                     }
-
                 }
             //Draw black everywhere else
             } else {
@@ -389,7 +393,7 @@ void loop() {
         }
     }
 
-    if(collision == 5) {
+    if(collision == COLLIDE_TOP) {
         for(;;);
     }
 }
