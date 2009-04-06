@@ -144,7 +144,7 @@ void check_completed_lines() {
             if(grid[a][b] == 0)
                 complete_line = false;
         }
-        //If one is found, clear it and move everbthing above it down
+        //If one is found, clear it and move everything above it down
         if(complete_line) {
             unsigned short int a;
             for(a=b+1; a<20; a++) {
@@ -164,6 +164,8 @@ void move_right() {
     detachInterrupt(0);
     if(piece_position[0] != 9 && check_collision() != COLLIDE_RIGHT)
         piece_position[0]++;
+    if(check_collision() == COLLIDE_BLOCK)
+        piece_position[0]--;
 }
 
 //ISR to move the piece left TODO actual collision detection rather than the 4x4
@@ -171,51 +173,53 @@ void move_left() {
     detachInterrupt(1);
     if(piece_position[0] != 0 && check_collision() != COLLIDE_LEFT)
         piece_position[0]--;
+    if(check_collision() == COLLIDE_BLOCK)
+        piece_position[0]++;
 }
 
 //Transmit the correct bytes for any given colour-number
 // Each pixel must be transmitted as two bytes
 //  RRRRRGGG GGGBBBBBB
 // The colours are encoded with bytes as follows
-//  0    BLACK   0x00 0x00
-//  1    RED     0xD8 0x00
-//  2    GREEN   0x06 0xE0
-//  3    BLUE    0x00 0xFB
-//  4    YELLOW  0xDE 0xE0
-//  5    PURPLE  0xD8 0x1B
-//  6    CYAN    0x06 0xFB
-//  7    ORANGE  0xD9 0xA0
+#define BLACK   0   //0x00 0x00
+#define RED     1   //0xD8 0x00
+#define GREEN   2   //0x06 0xE0
+#define BLUE    3   //0x00 0xFB
+#define YELLOW  4   //0xDE 0xE0
+#define PURPLE  5   //0xD8 0x1B
+#define CYAN    6   //0x06 0xFB
+#define ORANGE  7   //0xD9 0xA0
 void send_colour(unsigned short int colour) {
     switch(colour) {
-        case 0:
+        case BLACK:
             transmit(0x00);
             transmit(0x00);
             break;
-        case 1:
+        case RED:
             transmit(0xD8);
             transmit(0x00);
             break;
-        case 2:
+        case GREEN:
             transmit(0x06);
             transmit(0xE0);
             break;
-        case 3:
+        case BLUE:
             transmit(0x00);
             transmit(0xFB);
             break;
-        case 4:
+        case YELLOW:
             transmit(0xDE);
             transmit(0xE0);
             break;
-        case 5:
+        case PURPLE:
             transmit(0xD8);
             transmit(0x1B);
             break;
-        case 6:
+        case CYAN:
             transmit(0x06);
             transmit(0xFB);
             break;
-        case 7:
+        case ORANGE:
             transmit(0xD9);
             transmit(0xA0);
             break;
@@ -269,8 +273,8 @@ void setup() {
     }
 
     //Clear the grid and piece
-    memset(grid, 0x00, 200);
-    memset(piece, 0x00, 16);
+    memset(grid, BLACK, 200);
+    memset(piece, BLACK, 16);
 
     //Tell the LCD we're about to start sending data
     PORTB = PORTB & ~(1<<PB2);
@@ -311,10 +315,10 @@ void loop() {
             case COLLIDE_BLOCK:
                 piece_position[1]++;    //Move it back up
                 blit_piece_to_grid();   //Blit it to the grid
+                check_completed_lines();
                 collision = check_collision_top();
                 if( collision == COLLIDE_TOP )  //ohshit we lost the game
-                    memset(grid, 1, 200);
-                check_completed_lines();
+                    memset(grid, RED, 200);
                 piece_in_play = false;
                 break;
             case COLLIDE_FLOOR:
