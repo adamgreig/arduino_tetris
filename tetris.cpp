@@ -8,6 +8,7 @@
 //A listing of registers that need to be set on the LCD
 #include "initcode.h"
 
+//Constants that are set at the start of SPI messages to the LCD
 #define INDEX 0x00
 #define DATA 0x02
 #define IDBYTE 0x74
@@ -16,11 +17,12 @@
 char grid[10][20];
 //Store the current piece, max 4x4, coloured
 char piece[4][4];
-//Store whether we've currently got a piece
+//Store whether we've currently got a piece (if false, one is generated)
 bool piece_in_play = false;
-//Store current piece position, offset from (0,0) of the grid
+//Store current piece position, the (0,0) corner of the piece matrix
+// compared to the grid coordinates
 char piece_position[2];
-//Used all the time
+//Used all the time for various things
 volatile unsigned short int x, y;
 
 //The tetrominoes
@@ -32,7 +34,7 @@ char pieceS[4][4] = {{0,2,2,0},{2,2,0,0},{0,0,0,0},{0,0,0,0}};
 char pieceT[4][4] = {{0,5,0,0},{5,5,5,0},{0,0,0,0},{0,0,0,0}};
 char pieceZ[4][4] = {{1,1,0,0},{0,1,1,0},{0,0,0,0},{0,0,0,0}};
 
-//Send one byte over the serial port
+//Send one byte over SPI
 void transmit( char data ) {
     SPDR = data;
     while(!(SPSR & (1<<SPIF)));
@@ -53,6 +55,7 @@ void write_reg( unsigned short index, unsigned short data ) {
 }
 
 //Rotate a 4x4 matrix clockwise
+// This is hardcoded for speed
 void rotate(char src[4][4]) {
     char dst[4][4];
 
@@ -234,6 +237,7 @@ void loop() {
             if(grid[x][y] == 0)
                 complete_line = false;
         }
+        //If one is found, clear it and move everything above it down
         if(complete_line) {
             unsigned short int a;
             for(a=y+1; a<20; a++) {
@@ -309,6 +313,7 @@ void loop() {
                     }
 
                 }
+            //Draw black everywhere else
             } else {
                 transmit(0x00);
                 transmit(0x00);
@@ -317,6 +322,9 @@ void loop() {
     }
 }
 
+//This function binds it all together and makes the rest
+// just like an Arduino. Call Arduino's init() then my
+// setup then keep calling loop().
 int main() {
     init();
     setup();
