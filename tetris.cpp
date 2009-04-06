@@ -26,6 +26,8 @@ char piece_position[2];
 volatile unsigned short int x, y;
 //Store milliseconds since program start, used to work out when to apply gravity
 unsigned long milliseconds;
+//Store collision check results
+char collision;
 
 //The tetrominoes
 char pieceI[4][4] = {{6,6,6,6},{0,0,0,0},{0,0,0,0},{0,0,0,0}};
@@ -56,45 +58,112 @@ void write_reg( unsigned short index, unsigned short data ) {
     PORTB = PORTB | (1<<PB2);
 }
 
+//Check for collisions with the grid blocks or walls
+#define COLLIDE_NONE    0
+#define COLLIDE_BLOCK   1
+#define COLLIDE_FLOOR   2
+#define COLLIDE_LEFT    3
+#define COLLIDE_RIGHT   4
+#define COLLIDE_TOP     5
+char check_collision() {
+    unsigned short int a, b;
+    for(a=0; a<10; a++) {
+        if( grid[a][19] ) {
+            return 5;
+        }
+    }
+    for(a=0; a<4; a++) {
+        for(b=0; b<4; b++) {
+            if( !piece[a][b] ) {
+                continue;
+            } else if( grid[piece_position[0] + a][piece_position[1] + b] ) {
+                return 1;
+            } else if( piece_position[1] + b == 0) {
+                return 2;
+            } else if( piece_position[0] + a == 0) {
+                return 3;
+            } else if( piece_position[0] + a == 9) {
+                return 4;
+            }
+        }
+    }
+    return 0;
+}
+
+//Copy a piece into the grid
+void blit_piece_to_grid() {
+    unsigned short int a, b;
+    for(a=0; a<4; a++) {
+        for(b=0; b<4; b++) {
+            if(piece[a][b])
+                grid[piece_position[0] + a][piece_position[1] + b] = piece[a][b];
+        }
+    }
+}
+
 //Rotate a 4x4 matrix clockwise
 // This is hardcoded for speed
-void rotate(char src[4][4]) {
+void rotate() {
     char dst[4][4];
 
-    dst[0][0] = src[3][0];
-    dst[0][1] = src[2][0];
-    dst[0][2] = src[1][0];
-    dst[0][3] = src[0][0];
+    dst[0][0] = piece[3][0];
+    dst[0][1] = piece[2][0];
+    dst[0][2] = piece[1][0];
+    dst[0][3] = piece[0][0];
 
-    dst[1][0] = src[3][1];
-    dst[1][1] = src[2][1];
-    dst[1][2] = src[1][1];
-    dst[1][3] = src[0][1];
+    dst[1][0] = piece[3][1];
+    dst[1][1] = piece[2][1];
+    dst[1][2] = piece[1][1];
+    dst[1][3] = piece[0][1];
 
-    dst[2][0] = src[3][2];
-    dst[2][1] = src[2][2];
-    dst[2][2] = src[1][2];
-    dst[2][3] = src[0][2];
+    dst[2][0] = piece[3][2];
+    dst[2][1] = piece[2][2];
+    dst[2][2] = piece[1][2];
+    dst[2][3] = piece[0][2];
 
-    dst[3][0] = src[3][3];
-    dst[3][1] = src[2][3];
-    dst[3][2] = src[1][3];
-    dst[3][3] = src[0][3];
+    dst[3][0] = piece[3][3];
+    dst[3][1] = piece[2][3];
+    dst[3][2] = piece[1][3];
+    dst[3][3] = piece[0][3];
 
-    memcpy(src, dst, 16);
+    memcpy(piece, dst, 16);
+}
+
+//Check for completed lines
+void check_completed_lines() {
+    unsigned short int a, b;
+    for(b=0; b<20; b++) {
+        bool complete_line = true;
+        for(a=0; a<10; a++) {
+            if(grid[a][b] == 0)
+                complete_line = false;
+        }
+        //If one is found, clear it and move everbthing above it down
+        if(complete_line) {
+            unsigned short int a;
+            for(a=b+1; a<20; a++) {
+                for(a=0; a<10; a++) {
+                    grid[a][a - 1] = grid[a][a];
+                }
+            }
+            for(a=0; a<10; a++) {
+                grid[a][19] = 0;
+            }
+        }
+    }
 }
 
 //ISR to move the piece right TODO actual collision detection rather than the 4x4
 void move_right() {
     detachInterrupt(0);
-    if(piece_position[0] != 9)
+    if(piece_position[0] != 9 && check_collision() != 4)
         piece_position[0]++;
 }
 
 //ISR to move the piece left TODO actual collision detection rather than the 4x4
 void move_left() {
     detachInterrupt(1);
-    if(piece_position[0] != 0)
+    if(piece_position[0] != 0 && check_collision() != 3)
         piece_position[0]--;
 }
 
@@ -216,7 +285,7 @@ void loop() {
 
     //Rotate the piece
     if(digitalRead(4) == LOW) {
-        rotate(piece);
+        rotate();
     }
 
     //Drop the piece
@@ -228,38 +297,28 @@ void loop() {
     //Gravity
     if( millis() - milliseconds > 300 ) {
         piece_position[1]--;
-        if(piece_position[1] == 0) {
-            //Copy it into the grid
-            for(x=0; x<4; x++) {
-                for(y=0; y<4; y++) {
-                    if(piece[x][y])
-                        grid[piece_position[0] + x][piece_position[1] + y] = piece[x][y];
-                }
-            }
+        collision = check_collision();
+        if(collision == 1) {
+            //Move it back up
+            piece_position[1]++;
+            //Copy piece to grid
+            blit_piece_to_grid();
+            //Check for completed lines
+            check_completed_lines();
+            //We now need a new piece
             piece_in_play = 0;
+        } else if(collision == 2) {
+            //Copy piece to grid
+            blit_piece_to_grid();
+            //Check for completed lines
+            check_completed_lines();
+            //We now need a new piece
+            piece_in_play = 0;
+        } else if(collision == 5) {
+            //oh shit we just lost the game
+            memset(grid, 1, 200);
         }
         milliseconds = millis();
-    }
-
-    //Check for completed lines
-    for(y=0; y<20; y++) {
-        bool complete_line = true;
-        for(x=0; x<10; x++) {
-            if(grid[x][y] == 0)
-                complete_line = false;
-        }
-        //If one is found, clear it and move everything above it down
-        if(complete_line) {
-            unsigned short int a;
-            for(a=y+1; a<20; a++) {
-                for(x=0; x<10; x++) {
-                    grid[x][a - 1] = grid[x][a];
-                }
-            }
-            for(x=0; x<10; x++) {
-                grid[x][19] = 0;
-            }
-        }
     }
 
     //Make a new piece if needed
@@ -328,6 +387,10 @@ void loop() {
                 transmit(0x00);
             }
         }
+    }
+
+    if(collision == 5) {
+        for(;;);
     }
 }
 
