@@ -105,7 +105,7 @@ void move_left() {
 //  0    BLACK   0x00 0x00
 //  1    RED     0xD8 0x00
 //  2    GREEN   0x06 0xE0
-//  3    BLUE    0x00 0x1B
+//  3    BLUE    0x00 0xFB
 //  4    YELLOW  0xDE 0xE0
 //  5    PURPLE  0xD8 0x1B
 //  6    CYAN    0x06 0xFB
@@ -126,7 +126,7 @@ void send_colour(unsigned short int colour) {
             break;
         case 3:
             transmit(0x00);
-            transmit(0x1B);
+            transmit(0xFB);
             break;
         case 4:
             transmit(0xDE);
@@ -173,8 +173,9 @@ void setup() {
     digitalWrite(5, HIGH);
 
     //Seed the random number generator
-    analogRead(5);
-    randomSeed(analogRead(5));
+    int random_seed = analogRead(5);
+    randomSeed(random_seed);
+    srand(random_seed);
 
     //Store current millis
     milliseconds = millis();
@@ -218,7 +219,7 @@ void loop() {
 
     //Drop the piece
     if(digitalRead(5) == LOW) {
-        if(piece_position[1] != 1)
+        if(piece_position[1] > 2)
             piece_position[1] -= 2;
     }
 
