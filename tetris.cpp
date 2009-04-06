@@ -173,8 +173,10 @@ void setup() {
     digitalWrite(5, HIGH);
 
     //Seed the random number generator
-    int random_seed = analogRead(5);
+    int random_seed;
+    random_seed = analogRead(5);
     randomSeed(random_seed);
+    random_seed = analogRead(5);
     srand(random_seed);
 
     //Store current millis
@@ -263,7 +265,7 @@ void loop() {
     //Make a new piece if needed
     if(!piece_in_play) {
         //Copy a random piece into the piece matrix
-        char random_piece = random(0,7);
+        char random_piece = rand() % 7;
         switch(random_piece) {
             case 0:
                 memcpy(piece, pieceI, 16);
