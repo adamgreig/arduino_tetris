@@ -25,5 +25,4 @@ always lie on the floor at the end. They also don't actually collide with each o
 detection needs to happen so pieces get moved to the edge of the grid correctly and lock into place
 when they touch another block. After that some performance enhancements would be great.
 A good idea would be to have all four buttons trigger one of two interrupts, with the other button
-identifying which interrupt was triggered, making reaction time much better. Perhaps we could improve
-on the redraw time too - constantly redraw, but only trigger gravity every couple hundred msec?
+identifying which interrupt was triggered, making reaction time much better.

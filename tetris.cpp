@@ -24,6 +24,8 @@ bool piece_in_play = false;
 char piece_position[2];
 //Used all the time for various things
 volatile unsigned short int x, y;
+//Store milliseconds since program start, used to work out when to apply gravity
+unsigned long milliseconds;
 
 //The tetrominoes
 char pieceI[4][4] = {{6,6,6,6},{0,0,0,0},{0,0,0,0},{0,0,0,0}};
@@ -174,6 +176,9 @@ void setup() {
     analogRead(5);
     randomSeed(analogRead(5));
 
+    //Store current millis
+    milliseconds = millis();
+
     //Initialise the LCD
     for(x = 0;; x += 2) {
         //If the current instruction is 0xFFFF we either break or delay
@@ -218,16 +223,19 @@ void loop() {
     }
 
     //Gravity
-    piece_position[1]--;
-    if(piece_position[1] == 0) {
-        //Copy it into the grid
-        for(x=0; x<4; x++) {
-            for(y=0; y<4; y++) {
-                if(piece[x][y])
-                    grid[piece_position[0] + x][piece_position[1] + y] = piece[x][y];
+    if( millis() - milliseconds > 300 ) {
+        piece_position[1]--;
+        if(piece_position[1] == 0) {
+            //Copy it into the grid
+            for(x=0; x<4; x++) {
+                for(y=0; y<4; y++) {
+                    if(piece[x][y])
+                        grid[piece_position[0] + x][piece_position[1] + y] = piece[x][y];
+                }
             }
+            piece_in_play = 0;
         }
-        piece_in_play = 0;
+        milliseconds = millis();
     }
 
     //Check for completed lines
@@ -251,10 +259,8 @@ void loop() {
         }
     }
 
-    //Work out current state
-    if(piece_in_play) {
-        delay(300);
-    } else {
+    //Make a new piece if needed
+    if(!piece_in_play) {
         //Copy a random piece into the piece matrix
         char random_piece = random(0,7);
         switch(random_piece) {
