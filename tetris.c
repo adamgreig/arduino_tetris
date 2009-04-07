@@ -391,24 +391,31 @@ void new_piece() {
     switch(random_piece) {
         case 0:
             memcpy(piece.points, pieceI, 4);
+            piece.colour = CYAN;
             break;
         case 1:
             memcpy(piece.points, pieceJ, 4);
+            piece.colour = BLUE;
             break;
         case 2:
             memcpy(piece.points, pieceL, 4);
+            piece.colour = ORANGE;
             break;
         case 3:
             memcpy(piece.points, pieceO, 4);
+            piece.colour = YELLOW;
             break;
         case 4:
             memcpy(piece.points, pieceS, 4);
+            piece.colour = GREEN;
             break;
         case 5:
             memcpy(piece.points, pieceT, 4);
+            piece.colour = PURPLE;
             break;
         case 6:
             memcpy(piece.points, pieceZ, 4);
+            piece.colour = RED;
             break;
     }
 
