@@ -31,14 +31,6 @@
 #define CYAN    6
 #define ORANGE  7
 
-//Collision results
-#define COLLIDE_NONE    0
-#define COLLIDE_BLOCK   1
-#define COLLIDE_FLOOR   2
-#define COLLIDE_LEFT    3
-#define COLLIDE_RIGHT   4
-#define COLLIDE_TOP     5
-
 //============================================================================
 // Structs
 //----------------------------------------------
@@ -55,6 +47,7 @@ typedef struct Piece_ {
     Position points[4];
     char colour;
     char in_play;
+    char rotation;
 } Piece;
 
 //============================================================================
@@ -76,6 +69,9 @@ void send_colour(char colour);
 
 //Check for completed lines
 void check_completed_lines(void);
+
+//Check the top row for any blocks causing game over
+char check_top_row(void);
 
 //Apply gravity
 void apply_gravity(void);
@@ -116,19 +112,26 @@ Piece piece;
 char grid[10][20];
 
 //Store number of milliseconds since execution started
-unsigned long milliseconds;
+unsigned long milliseconds_gravity;
+unsigned long milliseconds_interrupts;
+
+//Is it game over?
+char game_over = 0;
+
+//The player's score
+unsigned short int score = 0;
 
 //============================================================================
 // The seven Tetrominoes
 //----------------------------------------------
 
-Position PieceI[4] = {{0,0}, {1,0}, {2,0}, {3,0}};
-Position PieceJ[4] = {{0,0}, {0,1}, {1,1}, {2,1}};
-Position PieceL[4] = {{0,1}, {1,1}, {2,1}, {2,0}};
-Position PieceO[4] = {{0,0}, {0,1}, {1,0}, {1,1}};
-Position PieceS[4] = {{0,1}, {1,1}, {1,0}, {2,0}};
-Position PieceT[4] = {{0,1}, {1,1}, {2,1}, {1,0}};
-Position PieceZ[4] = {{0,0}, {1,0}, {1,1}, {2,1}};
+Position PieceI[4][4] = {{{0,0}, {1,0}, {2,0}, {3,0}}, {{0,0}, {1,0}, {2,0}, {3,0}}, {{0,0}, {1,0}, {2,0}, {3,0}}, {{0,0}, {1,0}, {2,0}, {3,0}}};
+Position PieceJ[4][4] = {{{0,0}, {0,1}, {1,1}, {2,1}}, {{0,0}, {0,1}, {1,1}, {2,1}}, {{0,0}, {0,1}, {1,1}, {2,1}}, {{0,0}, {0,1}, {1,1}, {2,1}}};
+Position PieceL[4][4] = {{{0,1}, {1,1}, {2,1}, {2,0}}, {{0,1}, {1,1}, {2,1}, {2,0}}, {{0,1}, {1,1}, {2,1}, {2,0}}, {{0,1}, {1,1}, {2,1}, {2,0}}};
+Position PieceO[4][4] = {{{0,0}, {0,1}, {1,0}, {1,1}}, {{0,0}, {0,1}, {1,0}, {1,1}}, {{0,0}, {0,1}, {1,0}, {1,1}}, {{0,0}, {0,1}, {1,0}, {1,1}}};
+Position PieceS[4][4] = {{{0,1}, {1,1}, {1,0}, {2,0}}, {{0,1}, {1,1}, {1,0}, {2,0}}, {{0,1}, {1,1}, {1,0}, {2,0}}, {{0,1}, {1,1}, {1,0}, {2,0}}};
+Position PieceT[4][4] = {{{0,1}, {1,1}, {2,1}, {1,0}}, {{0,1}, {1,1}, {2,1}, {1,0}}, {{0,1}, {1,1}, {2,1}, {1,0}}, {{0,1}, {1,1}, {2,1}, {1,0}}};
+Position PieceZ[4][4] = {{{0,0}, {1,0}, {1,1}, {2,1}}, {{0,0}, {1,0}, {1,1}, {2,1}}, {{0,0}, {1,0}, {1,1}, {2,1}}, {{0,0}, {1,0}, {1,1}, {2,1}}};
 
 //============================================================================
 //============================================================================
@@ -161,7 +164,8 @@ void setup() {
     rand(); rand();
 
     //Store current millis
-    milliseconds = millis();
+    milliseconds_gravity = millis();
+    milliseconds_interrupts = millis();
 
     //Initialise the LCD
     unsigned short int x;
@@ -196,11 +200,8 @@ void setup() {
 //----------------------------------------------
 
 void loop() {
-    //Re-enable all interrupts
-    attachInterrupt(0, move_right, LOW);
-    attachInterrupt(1, move_left, LOW);
-    PCICR = (1<<PCIE2);
-    PCMSK2 = (1<<PCINT20) | (1<<PCINT21);
+    
+    enable_interrupts();
 
     apply_gravity();
 
@@ -221,19 +222,22 @@ void loop() {
                 } else {
                     char a = x/6;
                     char b = y/6;
-
-                    char i, sent = 0;
-                    for(i=0; i<4; i++) {
-                        if( piece.pos.x + piece.points[i].x == a &&
-                            piece.pos.y + piece.points[i].y == b ) {
-                            send_colour(piece.colour);
-                            sent = 1;
-                            break;
-                        }
-                    }
-
-                    if( !sent )
+                    
+                    if( a - piece.pos.x < 4 && b - piece.pos.y < 4 ) {
+                        if( (piece.pos.x + piece.points[0].x == a &&
+                             piece.pos.y + piece.points[0].y == b) ||
+                            (piece.pos.x + piece.points[1].x == a &&
+                             piece.pos.y + piece.points[1].y == b) ||
+                            (piece.pos.x + piece.points[2].x == a &&
+                             piece.pos.y + piece.points[2].y == b) ||
+                            (piece.pos.x + piece.points[3].x == a &&
+                             piece.pos.y + piece.points[3].y == b) )
+                                send_colour(piece.colour);
+                        else
+                            send_colour(grid[a][b]);
+                    } else {
                         send_colour(grid[a][b]);
+                    }
                 }
                 //Draw black everywhere else
             } else {
@@ -241,7 +245,10 @@ void loop() {
             }
         }
     }
-
+    
+    if( game_over ) {
+        for(;;);
+    }
 }
 
 //============================================================================
@@ -279,31 +286,42 @@ void check_completed_lines() {
 
     for(b=0; b<20; b++) {
         char complete_line = 1;
-
+        
         for(a=0; a<10; a++) {
             if(grid[a][b] == 0)
                 complete_line = 0;
         }
-
+        
         //If one is found, clear it and move everything above it down
         if(complete_line) {
-            unsigned short int a;
-
+            unsigned short int c;
             for(a=b+1; a<20; a++) {
-                for(a=0; a<10; a++) {
-                    grid[a][a - 1] = grid[a][a];
+                for(c=0; c<10; c++) {
+                    grid[c][a - 1] = grid[c][a];
                 }
             }
-
-            for(a=0; a<10; a++) {
-                grid[a][19] = 0;
+            for(c=0; c<10; c++) {
+                grid[c][19] = BLACK;
             }
-
+            
             //Having moved everything down we might have another line at
             // this position, so decrement b
             b--;
+            
+            //Give them a point
+            score++;
         }
     }
+}
+
+//Check for anything on the top of the grid
+char check_top_row() {
+    char i;
+    for(i=0; i<10; i++) {
+        if(grid[i][19])
+            return 1;
+    }
+    return 0;
 }
 
 //Transmit the correct bytes for any given colour-number
@@ -350,48 +368,38 @@ void send_colour(char colour) {
     }
 }
 
+//Enable interrupts
+void enable_interrupts() {
+    if( millis() - milliseconds_interrupts > 150 ) {
+        //Re-enable all interrupts
+        attachInterrupt(0, rotate, LOW);
+        attachInterrupt(1, drop, LOW);
+        PCICR = (1<<PCIE2);
+        PCMSK2 = (1<<PCINT20) | (1<<PCINT21);
+        
+        milliseconds_interrupts = millis();
+    }
+}
+
 //Apply gravity
 void apply_gravity() {
-    if( millis() - milliseconds > 300 ) {
+    if( millis() - milliseconds_gravity > 300 ) {
         piece.pos.y--;
-
-        switch(check_collisions()) {
-            case COLLIDE_BLOCK:
-                //Dropping made us hit a block
-
-                //Go back to where we're not colliding
-                piece.pos.y++;
-
-                //Lock the piece onto the grid
-                blit();
-
-                //Check for any now complete lines
-                check_completed_lines();
-
-                //Mark the piece as not in play, so a new one is made
-                piece.in_play = 0;
-
-                break;
-
-            case COLLIDE_FLOOR:
-                //Dropping made us hit the floor
-
-                //Lock the piece onto the grid
-                blit();
-
-                //Check for any now complete lines
-                check_completed_lines();
-
-                //Mark the piece as not in play, so a new one is made
-                piece.in_play = 0;
-
-                break;
-            case COLLIDE_TOP:
-                //We hit the top, game over
+        
+        if( check_collisions() ) {
+            piece.pos.y++;
+            blit();
+            check_completed_lines();
+            piece.in_play = 0;
+            
+            if( check_top_row() ) {
                 memset(grid, RED, 200);
+                memset(grid, GREEN, score);
+                game_over = 1;
+            }
         }
-
-        milliseconds = millis();
+        
+        milliseconds_gravity = millis();
     }
 }
 
@@ -444,23 +452,13 @@ void new_piece() {
 //Check if the current piece has any collisions
 char check_collisions() {
     char i, x, y;
-    for(i=0; i<10; i++) {
-        if(grid[i][19])
-            return COLLIDE_TOP;
-    }
     for(i=0; i<4; i++) {
         x = piece.pos.x + piece.points[i].x;
         y = piece.pos.y + piece.points[i].y;
-        if( grid[x][y] )
-            return COLLIDE_BLOCK;
-        else if( x == 0 )
-            return COLLIDE_LEFT;
-        else if( x == 9 )
-            return COLLIDE_RIGHT;
-        else if( y == 0 )
-            return COLLIDE_FLOOR;
+        if( grid[x][y] || x < 0 || x > 9 || y < 0 )
+            return 1;
     }
-    return COLLIDE_NONE;
+    return 0;
 }
 
 //Blit piece to grid
@@ -475,35 +473,29 @@ void blit() {
 
 //Rotate a piece
 void rotate() {
+    detachInterrupt(0);
 }
 
 void drop() {
-    if( piece.pos.y > 2 ) {
-        piece.pos.y -= 2;
-    }
-    if( check_collisions() == COLLIDE_BLOCK ) {
+    detachInterrupt(1);
+    piece.pos.y -= 2;
+    if( check_collisions() ) {
         piece.pos.y += 2;
     }
 }
 
 //Move a piece left
 void move_left() {
-    detachInterrupt(1);
-    if( check_collisions() != COLLIDE_LEFT ) {
-        piece.pos.x--;
-    }
-    if( check_collisions() == COLLIDE_BLOCK ) {
+    piece.pos.x--;
+    if( check_collisions() ) {
         piece.pos.x++;
     }
 }
 
 //Move a piece right
 void move_right() {
-    detachInterrupt(0);
-    if( check_collisions() != COLLIDE_RIGHT ) {
-        piece.pos.x++;
-    }
-    if( check_collisions() == COLLIDE_BLOCK ) {
+    piece.pos.x++;
+    if( check_collisions() ) {
         piece.pos.x--;
     }
 }
@@ -512,9 +504,9 @@ void move_right() {
 ISR( PCINT2_vect ) {
     PCICR = 0;
     if( digitalRead(4) == LOW )
-        rotate();
+        move_right();
     else if( digitalRead(5) == LOW )
-        drop();
+        move_left();
 }
 
 //============================================================================
