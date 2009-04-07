@@ -17,9 +17,9 @@
 //----------------------------------------------
 
 //Constants that are set at the start of SPI messages to the LCD
-#define INDEX 0x00
-#define DATA 0x02
-#define IDBYTE 0x74
+#define INDEX   0x00
+#define DATA    0x02
+#define IDBYTE  0x74
 
 //Colours that grid squares might be
 #define BLACK   0
@@ -439,6 +439,14 @@ char check_collisions_top() {
 
 //Blit piece to grid
 void blit() {
+    char i;
+    for(i=0; i<4; i++) {
+        Position point = piece.points[i];
+        char grid_x, grid_y;
+        grid_x = piece.pos.x + point.x;
+        grid_y = piece.pos.y + point.y;
+        grid[grid_x][grid_y] = piece.colour;
+    }
 }
 
 //Rotate a piece
@@ -446,23 +454,38 @@ void rotate() {
 }
 
 void drop() {
+    if( piece.pos.y > 2 ) {
+        piece.pos.y -= 2;
+    }
 }
 
 //Move a piece left
 void move_left() {
+    if( check_collisions() != COLLIDE_SIDE ) {
+        piece.pos.x--;
+    }
+    if( check_collisions() == COLLIDE_BLOCK ) {
+        piece.pos.x++;
+    }
 }
 
 //Move a piece right
 void move_right() {
+    if( check_collisions() != COLLIDE_SIDE ) {
+        piece.pos.x++;
+    }
+    if( check_collisions() == COLLIDE_BLOCK ) {
+        piece.pos.x--;
+    }
 }
 
 //Handle PCINT interrupt
 ISR( PCINT2_vect ) {
+    PCICR = 0;
     if( digitalRead(4) == LOW )
         rotate();
     else if( digitalRead(5) == LOW )
         drop();
-    PCICR = 0;
 }
 
 //============================================================================
