@@ -76,6 +76,9 @@ void send_colour(char colour);
 //Check for completed lines
 void check_completed_lines(void);
 
+//Apply gravity
+void apply_gravity(void);
+
 //============================================================================
 // Piece Control Prototypes
 //----------------------------------------------
@@ -91,6 +94,9 @@ void blit(void);
 
 //Rotate a piece
 void rotate(void);
+
+//Drop a piece
+void drop(void);
 
 //Move a piece left
 void move_left(void);
@@ -192,6 +198,46 @@ void loop() {
     //Re-enable all interrupts
     attachInterrupt(0, move_right, LOW);
     attachInterrupt(1, move_left, LOW);
+    PCICR = (1<<PCIE2);
+    PCMSK2 = (1<<PCINT20) | (1<<PCINT21);
+
+    apply_gravity();
+
+    if( !piece.in_play )
+        new_piece();
+
+    //Iterate over every pixel
+    char x, y;
+    for(x = 0; x < 96; x++) {
+        for(y = 0; y < 128; y++) {
+            //Draw the game area
+            if( x < 61 && y < 121) {
+                //Draw the grid lines
+                if( x % 6 == 0 || y % 6 == 0 ) {
+                    transmit(0x39);
+                    transmit(0xE7);
+                    //Draw the blocks
+                } else {
+                    unsigned short int a = x/6;
+                    unsigned short int b = y/6;
+
+                    if( /* The piece is over the currently drawn block */ ) {
+                        if( /* An active block of the piece is over the currently drawn block */ )
+                            send_colour(piece.colour);
+                        else
+                            send_colour(grid[a][b]);
+                    } else {
+                        send_colour(grid[a][b]);
+                    }
+                }
+                //Draw black everywhere else
+            } else {
+                transmit(0x00);
+                transmit(0x00);
+            }
+        }
+    }
+
 }
 
 //============================================================================
@@ -296,6 +342,89 @@ void send_colour(char colour) {
     }
 }
 
+//Apply gravity
+void apply_gravity() {
+    if( millis() - milliseconds > 300 ) {
+        piece.position.y--;
+
+        switch(check_collision()) {
+            case COLLIDE_BLOCK:
+                //Dropping made us hit a block
+
+                //Go back to where we're not colliding
+                piece.position.y++;
+
+                //Lock the piece onto the grid
+                blit_piece_to_grid();
+
+                //Check for any now complete lines
+                check_completed_lines();
+
+                //Check for collision with the top
+                if( check_collision_top() = COLLIDE_TOP ) {
+                    //If so, game over.
+                    memset(grid, RED, 200);
+                }
+
+                //Mark the piece as not in play, so a new one is made
+                piece.in_play = 0;
+
+                break;
+
+            case COLLIDE_FLOOR:
+                //Dropping made us hit the floor
+
+                //Lock the piece onto the grid
+                blit_piece_to_grid();
+
+                //Check for any now complete lines
+                check_completed_lines();
+
+                //Mark the piece as not in play, so a new one is made
+                piece.in_play = 0;
+
+                break;
+        }
+
+        milliseconds = millis();
+    }
+}
+
+//Make a new piece
+void new_piece() {
+    //Copy a random piece into the piece matrix
+    char random_piece = (rand() % 14) / 2;
+    switch(random_piece) {
+        case 0:
+            memcpy(piece.points, pieceI, 4);
+            break;
+        case 1:
+            memcpy(piece.points, pieceJ, 4);
+            break;
+        case 2:
+            memcpy(piece.points, pieceL, 4);
+            break;
+        case 3:
+            memcpy(piece.points, pieceO, 4);
+            break;
+        case 4:
+            memcpy(piece.points, pieceS, 4);
+            break;
+        case 5:
+            memcpy(piece.points, pieceT, 4);
+            break;
+        case 6:
+            memcpy(piece.points, pieceZ, 4);
+            break;
+    }
+
+    //Set its start position
+    piece.pos.x = 5;
+    piece.pos.y = 19;
+
+    piece.in_play = 1;
+}
+
 //============================================================================
 // Piece Control Functions
 //----------------------------------------------
@@ -316,6 +445,9 @@ void blit() {
 void rotate() {
 }
 
+void drop() {
+}
+
 //Move a piece left
 void move_left() {
 }
@@ -324,6 +456,14 @@ void move_left() {
 void move_right() {
 }
 
+//Handle PCINT interrupt
+ISR( PCINT2_vect ) {
+    if( digitalRead(4) == LOW )
+        rotate();
+    else if( digitalRead(5) == LOW )
+        drop();
+    PCICR = 0;
+}
 
 //============================================================================
 //============================================================================
