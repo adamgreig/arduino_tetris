@@ -291,6 +291,10 @@ void check_completed_lines() {
             for(a=0; a<10; a++) {
                 grid[a][19] = 0;
             }
+            
+            //Having moved everything down we might have another line at
+            // this position, so decrement b
+            b--;
         }
     }
 }
