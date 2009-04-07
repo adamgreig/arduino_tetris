@@ -86,9 +86,6 @@ void apply_gravity(void);
 //Check if the current piece has any collisions
 char check_collisions(void);
 
-//Check for any collisions with the top, which are game ending
-char check_collisions_top(void);
-
 //Blit piece to grid
 void blit(void);
 
@@ -360,12 +357,6 @@ void apply_gravity() {
                 //Check for any now complete lines
                 check_completed_lines();
 
-                //Check for collision with the top
-                if( check_collision_top() = COLLIDE_TOP ) {
-                    //If so, game over.
-                    memset(grid, RED, 200);
-                }
-
                 //Mark the piece as not in play, so a new one is made
                 piece.in_play = 0;
 
@@ -384,6 +375,9 @@ void apply_gravity() {
                 piece.in_play = 0;
 
                 break;
+            case COLLIDE_TOP:
+                //We hit the top, game over
+                memset(grid, RED, 200);
         }
 
         milliseconds = millis();
@@ -431,21 +425,33 @@ void new_piece() {
 
 //Check if the current piece has any collisions
 char check_collisions() {
-}
-
-//Check for any collisions with the top, which are game ending
-char check_collisions_top() {
+    char i, x, y;
+    Position point;
+    for(i=0; i<4; i++) {
+        point = piece.points[i];
+        x = piece.pos.x + point.x;
+        y = piece.pos.y + point.y;
+        if( grid[x][y] )
+            return COLLIDE_BLOCK;
+        elif( x == 0 || x == 9 )
+            return COLLIDE_SIDE;
+        elif( y == 0 )
+            return COLLIDE_FLOOR;
+        elif( y == 19 )
+            return COLLIDE_TOP;
+    }
+    return COLLIDE_NONE;
 }
 
 //Blit piece to grid
 void blit() {
-    char i;
+    char i, x, y;
+    Position point;
     for(i=0; i<4; i++) {
-        Position point = piece.points[i];
-        char grid_x, grid_y;
-        grid_x = piece.pos.x + point.x;
-        grid_y = piece.pos.y + point.y;
-        grid[grid_x][grid_y] = piece.colour;
+        point = piece.points[i];
+        x = piece.pos.x + point.x;
+        y = piece.pos.y + point.y;
+        grid[x][y] = piece.colour;
     }
 }
 
