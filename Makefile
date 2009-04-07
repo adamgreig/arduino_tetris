@@ -198,7 +198,7 @@ core.a: $(OBJ)
 	@for i in $(OBJ); do echo $(AR) rcs core.a $$i; $(AR) rcs core.a $$i; done
 
 # Link: create ELF output file from library.
-$(TARGET).elf: core.a
+$(TARGET).elf: core.a $(TARGET).c
 	$(CC) $(ALL_CFLAGS) -o $@ $(TARGET).c -L. core.a $(LDFLAGS)
 
 # Compile: create object files from C++ source files.

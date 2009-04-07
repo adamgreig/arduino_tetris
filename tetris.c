@@ -79,6 +79,9 @@ void check_completed_lines(void);
 //Apply gravity
 void apply_gravity(void);
 
+//Make a new piece
+void new_piece(void);
+
 //============================================================================
 // Piece Control Prototypes
 //----------------------------------------------
@@ -291,7 +294,7 @@ void check_completed_lines() {
             for(a=0; a<10; a++) {
                 grid[a][19] = 0;
             }
-            
+
             //Having moved everything down we might have another line at
             // this position, so decrement b
             b--;
@@ -346,17 +349,17 @@ void send_colour(char colour) {
 //Apply gravity
 void apply_gravity() {
     if( millis() - milliseconds > 300 ) {
-        piece.position.y--;
+        piece.pos.y--;
 
-        switch(check_collision()) {
+        switch(check_collisions()) {
             case COLLIDE_BLOCK:
                 //Dropping made us hit a block
 
                 //Go back to where we're not colliding
-                piece.position.y++;
+                piece.pos.y++;
 
                 //Lock the piece onto the grid
-                blit_piece_to_grid();
+                blit();
 
                 //Check for any now complete lines
                 check_completed_lines();
@@ -370,7 +373,7 @@ void apply_gravity() {
                 //Dropping made us hit the floor
 
                 //Lock the piece onto the grid
-                blit_piece_to_grid();
+                blit();
 
                 //Check for any now complete lines
                 check_completed_lines();
@@ -394,31 +397,31 @@ void new_piece() {
     char random_piece = (rand() % 14) / 2;
     switch(random_piece) {
         case 0:
-            memcpy(piece.points, pieceI, 4);
+            memcpy(piece.points, PieceI, 4);
             piece.colour = CYAN;
             break;
         case 1:
-            memcpy(piece.points, pieceJ, 4);
+            memcpy(piece.points, PieceJ, 4);
             piece.colour = BLUE;
             break;
         case 2:
-            memcpy(piece.points, pieceL, 4);
+            memcpy(piece.points, PieceL, 4);
             piece.colour = ORANGE;
             break;
         case 3:
-            memcpy(piece.points, pieceO, 4);
+            memcpy(piece.points, PieceO, 4);
             piece.colour = YELLOW;
             break;
         case 4:
-            memcpy(piece.points, pieceS, 4);
+            memcpy(piece.points, PieceS, 4);
             piece.colour = GREEN;
             break;
         case 5:
-            memcpy(piece.points, pieceT, 4);
+            memcpy(piece.points, PieceT, 4);
             piece.colour = PURPLE;
             break;
         case 6:
-            memcpy(piece.points, pieceZ, 4);
+            memcpy(piece.points, PieceZ, 4);
             piece.colour = RED;
             break;
     }
@@ -444,11 +447,11 @@ char check_collisions() {
         y = piece.pos.y + point.y;
         if( grid[x][y] )
             return COLLIDE_BLOCK;
-        elif( x == 0 || x == 9 )
+        else if( x == 0 || x == 9 )
             return COLLIDE_SIDE;
-        elif( y == 0 )
+        else if( y == 0 )
             return COLLIDE_FLOOR;
-        elif( y == 19 )
+        else if( y == 19 )
             return COLLIDE_TOP;
     }
     return COLLIDE_NONE;
