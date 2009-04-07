@@ -199,7 +199,7 @@ core.a: $(OBJ)
 
 # Link: create ELF output file from library.
 $(TARGET).elf: core.a
-	$(CC) $(ALL_CFLAGS) -o $@ $(TARGET).cpp -L. core.a $(LDFLAGS)
+	$(CC) $(ALL_CFLAGS) -o $@ $(TARGET).c -L. core.a $(LDFLAGS)
 
 # Compile: create object files from C++ source files.
 .cpp.o:

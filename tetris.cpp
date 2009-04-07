@@ -2,6 +2,7 @@
 // Adam Greig, April 2009
 
 #include <WProgram.h>
+#include <stdlib.h>
 #include <avr/interrupt.h>
 #include <avr/io.h>
 
@@ -252,11 +253,8 @@ void setup() {
     digitalWrite(5, HIGH);
 
     //Seed the random number generator
-    int random_seed;
-    random_seed = analogRead(5);
-    randomSeed(random_seed);
-    random_seed = analogRead(5);
-    srand(random_seed);
+    srand(2 * analogRead(5));
+    rand(); rand();
 
     //Store current millis
     milliseconds = millis();
