@@ -35,8 +35,9 @@
 #define COLLIDE_NONE    0
 #define COLLIDE_BLOCK   1
 #define COLLIDE_FLOOR   2
-#define COLLIDE_SIDE    3
-#define COLLIDE_TOP     4
+#define COLLIDE_LEFT    3
+#define COLLIDE_RIGHT   4
+#define COLLIDE_TOP     5
 
 //============================================================================
 // Structs
@@ -207,7 +208,7 @@ void loop() {
         new_piece();
 
     //Iterate over every pixel
-    char x, y;
+    unsigned short int x, y;
     for(x = 0; x < 96; x++) {
         for(y = 0; y < 128; y++) {
             //Draw the game area
@@ -216,24 +217,27 @@ void loop() {
                 if( x % 6 == 0 || y % 6 == 0 ) {
                     transmit(0x39);
                     transmit(0xE7);
-                    //Draw the blocks
+                //Draw the blocks
                 } else {
-                    unsigned short int a = x/6;
-                    unsigned short int b = y/6;
+                    char a = x/6;
+                    char b = y/6;
 
-                    if( /* The piece is over the currently drawn block */ ) {
-                        if( /* An active block of the piece is over the currently drawn block */ )
+                    char i, sent = 0;
+                    for(i=0; i<4; i++) {
+                        if( piece.pos.x + piece.points[i].x == a &&
+                            piece.pos.y + piece.points[i].y == b ) {
                             send_colour(piece.colour);
-                        else
-                            send_colour(grid[a][b]);
-                    } else {
-                        send_colour(grid[a][b]);
+                            sent = 1;
+                            break;
+                        }
                     }
+
+                    if( !sent )
+                        send_colour(grid[a][b]);
                 }
                 //Draw black everywhere else
             } else {
-                transmit(0x00);
-                transmit(0x00);
+                send_colour(BLACK);
             }
         }
     }
@@ -440,19 +444,21 @@ void new_piece() {
 //Check if the current piece has any collisions
 char check_collisions() {
     char i, x, y;
-    Position point;
+    for(i=0; i<10; i++) {
+        if(grid[i][19])
+            return COLLIDE_TOP;
+    }
     for(i=0; i<4; i++) {
-        point = piece.points[i];
-        x = piece.pos.x + point.x;
-        y = piece.pos.y + point.y;
+        x = piece.pos.x + piece.points[i].x;
+        y = piece.pos.y + piece.points[i].y;
         if( grid[x][y] )
             return COLLIDE_BLOCK;
-        else if( x == 0 || x == 9 )
-            return COLLIDE_SIDE;
+        else if( x == 0 )
+            return COLLIDE_LEFT;
+        else if( x == 9 )
+            return COLLIDE_RIGHT;
         else if( y == 0 )
             return COLLIDE_FLOOR;
-        else if( y == 19 )
-            return COLLIDE_TOP;
     }
     return COLLIDE_NONE;
 }
@@ -460,11 +466,9 @@ char check_collisions() {
 //Blit piece to grid
 void blit() {
     char i, x, y;
-    Position point;
     for(i=0; i<4; i++) {
-        point = piece.points[i];
-        x = piece.pos.x + point.x;
-        y = piece.pos.y + point.y;
+        x = piece.pos.x + piece.points[i].x;
+        y = piece.pos.y + piece.points[i].y;
         grid[x][y] = piece.colour;
     }
 }
@@ -484,7 +488,8 @@ void drop() {
 
 //Move a piece left
 void move_left() {
-    if( check_collisions() != COLLIDE_SIDE ) {
+    detachInterrupt(1);
+    if( check_collisions() != COLLIDE_LEFT ) {
         piece.pos.x--;
     }
     if( check_collisions() == COLLIDE_BLOCK ) {
@@ -494,7 +499,8 @@ void move_left() {
 
 //Move a piece right
 void move_right() {
-    if( check_collisions() != COLLIDE_SIDE ) {
+    detachInterrupt(0);
+    if( check_collisions() != COLLIDE_RIGHT ) {
         piece.pos.x++;
     }
     if( check_collisions() == COLLIDE_BLOCK ) {
