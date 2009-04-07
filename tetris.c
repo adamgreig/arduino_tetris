@@ -457,6 +457,9 @@ void drop() {
     if( piece.pos.y > 2 ) {
         piece.pos.y -= 2;
     }
+    if( check_collisions() == COLLIDE_BLOCK ) {
+        piece.pos.y += 2;
+    }
 }
 
 //Move a piece left
