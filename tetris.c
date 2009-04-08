@@ -123,14 +123,16 @@ Piece piece;
 char grid[10][20];
 
 //Store number of milliseconds since execution started
-unsigned long milliseconds_gravity;
-unsigned long milliseconds_interrupts;
+unsigned long milliseconds;
 
 //Is it game over?
 char game_over = 0;
 
 //The player's score
 unsigned short int score = 0;
+
+//The game speed, starts at 300ms and drops
+unsigned short int speed = 300;
 
 //============================================================================
 //============================================================================
@@ -163,8 +165,7 @@ void setup() {
     rand(); rand();
 
     //Store current millis
-    milliseconds_gravity = millis();
-    milliseconds_interrupts = millis();
+    milliseconds = millis();
 
     //Initialise the LCD
     unsigned short int x;
@@ -197,15 +198,13 @@ void setup() {
 //============================================================================
 // Main Loop
 //----------------------------------------------
-
+char flip = 0;
 void loop() {
     
-    enable_interrupts();
-
-    apply_gravity();
-
     if( !piece.in_play )
         new_piece();
+    
+    apply_gravity();
 
     //Iterate over every pixel
     unsigned short int x, y;
@@ -245,9 +244,12 @@ void loop() {
         }
     }
     
-    if( game_over ) {
+    if( game_over )
         for(;;);
-    }
+    
+    //Enable interrupts
+    PCICR = (1<<PCIE2);
+    PCMSK2 = (1<<PCINT18) | (1<<PCINT19) | (1<<PCINT20) | (1<<PCINT21);
 }
 
 //============================================================================
@@ -309,6 +311,10 @@ void check_completed_lines() {
             
             //Give them a point
             score++;
+            
+            //Make it all go a tad faster
+            speed -= 5;
+            if( speed < 50 ) speed = 50;
         }
     }
 }
@@ -367,22 +373,10 @@ void send_colour(char colour) {
     }
 }
 
-//Enable interrupts
-void enable_interrupts() {
-    if( millis() - milliseconds_interrupts > 150 ) {
-        //Re-enable all interrupts
-        attachInterrupt(0, rotate, LOW);
-        attachInterrupt(1, drop, LOW);
-        PCICR = (1<<PCIE2);
-        PCMSK2 = (1<<PCINT20) | (1<<PCINT21);
-        
-        milliseconds_interrupts = millis();
-    }
-}
-
 //Apply gravity
 void apply_gravity() {
-    if( millis() - milliseconds_gravity > 300 ) {
+    if( millis() - milliseconds > speed ) {
+        
         piece.pos.y--;
         
         if( check_collisions() ) {
@@ -394,11 +388,12 @@ void apply_gravity() {
             if( check_top_row() ) {
                 memset(grid, RED, 200);
                 memset(grid, GREEN, score);
+                memset(piece.points, RED, 8);
                 game_over = 1;
             }
         }
         
-        milliseconds_gravity = millis();
+        milliseconds = millis();
     }
 }
 
@@ -466,15 +461,13 @@ void blit() {
     for(i=0; i<4; i++) {
         x = piece.pos.x + piece.points[i].x;
         y = piece.pos.y + piece.points[i].y;
-        grid[x][y] = piece.colour;
+        if( x >= 0 && x < 10 && y >= 0 && y < 20 )
+            grid[x][y] = piece.colour;
     }
 }
 
-//Rotate a piece
-void rotate() {
-    detachInterrupt(0);
-    piece.rotation++;
-    if( piece.rotation > 3 ) piece.rotation = 0;
+//Actually copy the relevent new bytes in
+void apply_rotation() {
     switch(piece.colour) {
         case CYAN:
             memcpy(piece.points, PieceI[piece.rotation], 8);
@@ -500,8 +493,19 @@ void rotate() {
     }
 }
 
+//Rotate a piece
+void rotate() {
+    piece.rotation++;
+    if( piece.rotation > 3 ) piece.rotation = 0;
+    apply_rotation();
+    if( check_collisions() ) {
+        piece.rotation--;
+        if( piece.rotation < 0 ) piece.rotation = 3;
+        apply_rotation();
+    }
+}
+
 void drop() {
-    detachInterrupt(1);
     piece.pos.y -= 2;
     if( check_collisions() ) {
         piece.pos.y += 2;
@@ -527,10 +531,14 @@ void move_right() {
 //Handle PCINT interrupt
 ISR( PCINT2_vect ) {
     PCICR = 0;
-    if( digitalRead(4) == LOW )
+    if( digitalRead(2) == LOW )
         move_right();
-    else if( digitalRead(5) == LOW )
+    else if( digitalRead(3) == LOW )
         move_left();
+    else if( digitalRead(4) == LOW )
+        rotate();
+    else if( digitalRead(5) == LOW )
+        drop();
 }
 
 //============================================================================
