@@ -12,6 +12,7 @@
 //A listing of registers that need to be set on the LCD
 #include "initcode.h"
 
+
 //============================================================================
 // Constants
 //----------------------------------------------
@@ -51,6 +52,13 @@ typedef struct Piece_ {
 } Piece;
 
 //============================================================================
+// The seven tetrominoes, and their rotations.
+//  Included here so as to be after the struct definitions.
+//----------------------------------------------
+
+#include "tetrominoes.h"
+
+//============================================================================
 // SPI Function Prototypes
 //----------------------------------------------
 
@@ -72,6 +80,9 @@ void check_completed_lines(void);
 
 //Check the top row for any blocks causing game over
 char check_top_row(void);
+
+//Enable interrupts
+void enable_interrupts(void);
 
 //Apply gravity
 void apply_gravity(void);
@@ -120,18 +131,6 @@ char game_over = 0;
 
 //The player's score
 unsigned short int score = 0;
-
-//============================================================================
-// The seven Tetrominoes
-//----------------------------------------------
-
-Position PieceI[4][4] = {{{0,0}, {1,0}, {2,0}, {3,0}}, {{0,0}, {1,0}, {2,0}, {3,0}}, {{0,0}, {1,0}, {2,0}, {3,0}}, {{0,0}, {1,0}, {2,0}, {3,0}}};
-Position PieceJ[4][4] = {{{0,0}, {0,1}, {1,1}, {2,1}}, {{0,0}, {0,1}, {1,1}, {2,1}}, {{0,0}, {0,1}, {1,1}, {2,1}}, {{0,0}, {0,1}, {1,1}, {2,1}}};
-Position PieceL[4][4] = {{{0,1}, {1,1}, {2,1}, {2,0}}, {{0,1}, {1,1}, {2,1}, {2,0}}, {{0,1}, {1,1}, {2,1}, {2,0}}, {{0,1}, {1,1}, {2,1}, {2,0}}};
-Position PieceO[4][4] = {{{0,0}, {0,1}, {1,0}, {1,1}}, {{0,0}, {0,1}, {1,0}, {1,1}}, {{0,0}, {0,1}, {1,0}, {1,1}}, {{0,0}, {0,1}, {1,0}, {1,1}}};
-Position PieceS[4][4] = {{{0,1}, {1,1}, {1,0}, {2,0}}, {{0,1}, {1,1}, {1,0}, {2,0}}, {{0,1}, {1,1}, {1,0}, {2,0}}, {{0,1}, {1,1}, {1,0}, {2,0}}};
-Position PieceT[4][4] = {{{0,1}, {1,1}, {2,1}, {1,0}}, {{0,1}, {1,1}, {2,1}, {1,0}}, {{0,1}, {1,1}, {2,1}, {1,0}}, {{0,1}, {1,1}, {2,1}, {1,0}}};
-Position PieceZ[4][4] = {{{0,0}, {1,0}, {1,1}, {2,1}}, {{0,0}, {1,0}, {1,1}, {2,1}}, {{0,0}, {1,0}, {1,1}, {2,1}}, {{0,0}, {1,0}, {1,1}, {2,1}}};
 
 //============================================================================
 //============================================================================
@@ -409,39 +408,39 @@ void new_piece() {
     char random_piece = (rand() % 14) / 2;
     switch(random_piece) {
         case 0:
-            memcpy(piece.points, PieceI, 4);
+            memcpy(piece.points, PieceI[0], 8);
             piece.colour = CYAN;
             break;
         case 1:
-            memcpy(piece.points, PieceJ, 4);
+            memcpy(piece.points, PieceJ[0], 8);
             piece.colour = BLUE;
             break;
         case 2:
-            memcpy(piece.points, PieceL, 4);
+            memcpy(piece.points, PieceL[0], 8);
             piece.colour = ORANGE;
             break;
         case 3:
-            memcpy(piece.points, PieceO, 4);
+            memcpy(piece.points, PieceO[0], 8);
             piece.colour = YELLOW;
             break;
         case 4:
-            memcpy(piece.points, PieceS, 4);
+            memcpy(piece.points, PieceS[0], 8);
             piece.colour = GREEN;
             break;
         case 5:
-            memcpy(piece.points, PieceT, 4);
+            memcpy(piece.points, PieceT[0], 8);
             piece.colour = PURPLE;
             break;
         case 6:
-            memcpy(piece.points, PieceZ, 4);
+            memcpy(piece.points, PieceZ[0], 8);
             piece.colour = RED;
             break;
     }
 
-    //Set its start position
+    //Inititalise its starting values
     piece.pos.x = 5;
     piece.pos.y = 19;
-
+    piece.rotation = 0;
     piece.in_play = 1;
 }
 
@@ -474,6 +473,31 @@ void blit() {
 //Rotate a piece
 void rotate() {
     detachInterrupt(0);
+    piece.rotation++;
+    if( piece.rotation > 3 ) piece.rotation = 0;
+    switch(piece.colour) {
+        case CYAN:
+            memcpy(piece.points, PieceI[piece.rotation], 8);
+            break;
+        case BLUE:
+            memcpy(piece.points, PieceJ[piece.rotation], 8);
+            break;
+        case ORANGE:
+            memcpy(piece.points, PieceL[piece.rotation], 8);
+            break;
+        case YELLOW:
+            memcpy(piece.points, PieceO[piece.rotation], 8);
+            break;
+        case GREEN:
+            memcpy(piece.points, PieceS[piece.rotation], 8);
+            break;
+        case PURPLE:
+            memcpy(piece.points, PieceT[piece.rotation], 8);
+            break;
+        case RED:
+            memcpy(piece.points, PieceZ[piece.rotation], 8);
+            break;
+    }
 }
 
 void drop() {
