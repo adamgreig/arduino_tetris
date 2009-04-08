@@ -100,6 +100,9 @@ char check_collisions(void);
 //Blit piece to grid
 void blit(void);
 
+//Actually copy the bytes to rotate a piece
+void apply_rotation(void);
+
 //Rotate a piece
 void rotate(void);
 
