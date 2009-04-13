@@ -22,10 +22,3 @@ and reenabled after drawing each frame to help stop accidental repeats.
 At the end of the game, when a block is placed in the top row, the grid is filled with red and then
 a number of squares are lit up green to represent the player's score. This is problematic with a
 score of over 200, but that's a pretty unlikely edge case.
-
-Bugs
-----
-
-The only known bug at the moment is that the random number generator keeps spitting out the same random
-numbers and I have no idea what to do about it. This means you always get the same blocks, and some blocks
-never come up. I know, right? weeeeird.

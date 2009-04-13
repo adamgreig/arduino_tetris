@@ -145,27 +145,18 @@ unsigned short int speed = 300;
 void setup() {
 
     //Set the SCK, MOSI and CS pins to output
-    pinMode(10, OUTPUT);
-    pinMode(11, OUTPUT);
-    pinMode(13, OUTPUT);
+    DDRB = (1<<PIN2) | (1<<PIN3) | (1<<PIN5);
 
     //Set up the SPI registers
     SPCR = (1<<SPE)|(1<<MSTR)|(0<<SPR0)|(0<<SPR1);
     SPSR = (1<<SPI2X);
 
     //Set the four button pins to be input pulled high
-    pinMode(2, INPUT);
-    pinMode(3, INPUT);
-    pinMode(4, INPUT);
-    pinMode(5, INPUT);
-    digitalWrite(2, HIGH);
-    digitalWrite(3, HIGH);
-    digitalWrite(4, HIGH);
-    digitalWrite(5, HIGH);
+    DDRD = 0;
+    PORTD = (1<<PIN0) | (1<<PIN1) | (1<<PIN2) | (1<<PIN3);
 
     //Seed the random number generator
-    srand(2 * analogRead(5));
-    rand(); rand();
+    srand(analogRead(5));
 
     //Store current millis
     milliseconds = millis();
@@ -212,7 +203,7 @@ void loop() {
     //Iterate over every pixel
     unsigned short int x, y;
     for(x = 0; x < 96; x++) {
-        for(y = 0; y < 128; y++) {
+        for(y = 128; y > 0; y--) {
             //Draw the game area
             if( x < 61 && y < 121) {
                 //Draw the grid lines
@@ -252,7 +243,7 @@ void loop() {
     
     //Enable interrupts
     PCICR = (1<<PCIE2);
-    PCMSK2 = (1<<PCINT18) | (1<<PCINT19) | (1<<PCINT20) | (1<<PCINT21);
+    PCMSK2 = (1<<PCINT16) | (1<<PCINT17) | (1<<PCINT18) | (1<<PCINT19);
 }
 
 //============================================================================
@@ -391,7 +382,7 @@ void apply_gravity() {
             if( check_top_row() ) {
                 memset(grid, RED, 200);
                 memset(grid, GREEN, score);
-                memset(piece.points, RED, 8);
+                piece.colour = RED;
                 game_over = 1;
             }
         }
@@ -403,7 +394,7 @@ void apply_gravity() {
 //Make a new piece
 void new_piece() {
     //Copy a random piece into the piece matrix
-    char random_piece = (rand() % 14) / 2;
+    char random_piece = (char)(rand() % 7);
     switch(random_piece) {
         case 0:
             memcpy(piece.points, PieceI[0], 8);
@@ -534,14 +525,15 @@ void move_right() {
 //Handle PCINT interrupt
 ISR( PCINT2_vect ) {
     PCICR = 0;
-    if( digitalRead(2) == LOW )
-        move_right();
-    else if( digitalRead(3) == LOW )
+    rand();
+    if( digitalRead(0) == LOW )
         move_left();
-    else if( digitalRead(4) == LOW )
-        rotate();
-    else if( digitalRead(5) == LOW )
+    else if( digitalRead(1) == LOW )
         drop();
+    else if( digitalRead(2) == LOW )
+        rotate();
+    else if( digitalRead(3) == LOW )
+        move_right();
 }
 
 //============================================================================
